@@ -1,0 +1,863 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Peta Kampus ULBI</title>
+  <meta name="description" content="Peta interaktif kampus ULBI Sarijadi, Bandung: gedung, asrama, fasilitas, dan jaringan jalan dari data GeoJSON.">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+  <style>
+:root {
+  --tinta: #14212b;
+  --tinta-lembut: #51626f;
+  --kertas: #f2f5f6;
+  --putih: #ffffff;
+  --garis: #d3dce1;
+  --teal: #0f6b6f;
+  --teal-muda: #dff0f0;
+  --aktif: #e8590c;
+  --aktif-muda: #fff0e6;
+  --jalan: #d6336c;
+  --tinggi-topbar: 64px;
+}
+
+* { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  font-family: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-size: 14px;
+  color: var(--tinta);
+  background: var(--kertas);
+}
+
+button, input, select { font: inherit; color: inherit; }
+
+:focus-visible {
+  outline: 2px solid var(--aktif);
+  outline-offset: 2px;
+}
+
+/* ---------- Topbar ---------- */
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-height: var(--tinggi-topbar);
+  padding: 8px 16px;
+  background: var(--tinta);
+  color: var(--putih);
+  flex-wrap: wrap;
+}
+
+.judul h1 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.judul p {
+  margin: 0;
+  font-size: 12px;
+  color: #a9b8c2;
+}
+
+.alat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+}
+
+
+
+.tombol {
+  padding: 7px 12px;
+  border: 1px solid #3a4b57;
+  border-radius: 6px;
+  background: #1d2f3b;
+  color: var(--putih);
+  cursor: pointer;
+}
+
+.tombol:hover { background: #28404f; }
+.tombol[aria-pressed="true"] { background: var(--teal); border-color: var(--teal); }
+.tombol:disabled { opacity: 0.5; cursor: default; }
+.tombol-kecil { padding: 4px 10px; font-size: 12px; }
+.tombol-menu { display: none; }
+
+.koordinat {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  border: 1px solid #3a4b57;
+  border-radius: 6px;
+  background: #1d2f3b;
+}
+
+.koordinat-judul {
+  font-size: 12px;
+  color: #a9b8c2;
+}
+
+.koordinat-nilai {
+  font-variant-numeric: tabular-nums;
+  font-weight: 500;
+  color: #ffd8bf;
+}
+
+/* ---------- Isi ---------- */
+.isi {
+  position: relative;
+  display: flex;
+  flex: 1;
+  min-height: 0;
+}
+
+.panel {
+  display: flex;
+  flex-direction: column;
+  width: 320px;
+  flex-shrink: 0;
+  background: var(--putih);
+  border-right: 1px solid var(--garis);
+}
+
+.panel-atas {
+  padding: 12px;
+  border-bottom: 1px solid var(--garis);
+}
+
+.cari {
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid var(--garis);
+  border-radius: 6px;
+  background: var(--kertas);
+}
+
+.cari::placeholder { color: var(--tinta-lembut); }
+
+.kelompok {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+}
+
+.kelompok button {
+  padding: 4px 10px;
+  border: 1px solid var(--garis);
+  border-radius: 999px;
+  background: var(--putih);
+  cursor: pointer;
+}
+
+.kelompok button:hover { border-color: var(--teal); }
+
+.kelompok button[aria-pressed="true"] {
+  background: var(--teal);
+  border-color: var(--teal);
+  color: var(--putih);
+}
+
+.daftar {
+  flex: 1;
+  margin: 0;
+  padding: 8px;
+  overflow-y: auto;
+  list-style: none;
+}
+
+.item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 9px 10px;
+  border: 1px solid transparent;
+  border-radius: 6px;
+  background: none;
+  text-align: left;
+  cursor: pointer;
+}
+
+.item:hover { background: var(--kertas); }
+
+.item[aria-current="true"] {
+  background: var(--aktif-muda);
+  border-color: var(--aktif);
+}
+
+.penanda {
+  width: 12px;
+  height: 12px;
+  flex-shrink: 0;
+  border-radius: 3px;
+}
+
+.penanda-jalan {
+  height: 4px;
+  border-radius: 2px;
+}
+
+.kat-gedung_pendidikan { background: #e8590c; }
+.kat-gedung { background: #3b5bdb; }
+.kat-asrama { background: #0f8b8d; }
+.kat-olahraga { background: #9c36b5; }
+.kat-fasilitas { background: #c08a00; }
+.kat-kantor { background: #6b7780; }
+.kat-ibadah { background: #2b8a3e; }
+.kat-jalan { background: #d6336c; }
+
+.item-nama { font-weight: 500; }
+.item-jenis { font-size: 12px; color: var(--tinta-lembut); }
+
+.jumlah {
+  margin: 0;
+  padding: 10px 12px;
+  border-top: 1px solid var(--garis);
+  font-size: 12px;
+  color: var(--tinta-lembut);
+}
+
+/* ---------- Peta ---------- */
+.area-peta {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+}
+
+.peta {
+  width: 100%;
+  height: 100%;
+  background: #dde5e8;
+}
+
+.galat {
+  position: absolute;
+  top: 16px;
+  left: 50%;
+  transform: translateX(-50%);
+  max-width: 90%;
+  margin: 0;
+  padding: 10px 14px;
+  border-radius: 6px;
+  background: #fff1f2;
+  border: 1px solid #f1a5ad;
+  color: #8a1c2b;
+}
+
+.galat[hidden] { display: none; }
+
+.label-bangunan {
+  display: block;
+  padding: 1px 5px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--tinta);
+  font-size: 11px;
+  font-weight: 600;
+  white-space: nowrap;
+  pointer-events: none;
+}
+
+.peta.label-sembunyi .label-bangunan,
+.peta.tanpa-label .label-bangunan {
+  display: none;
+}
+
+.legenda {
+  margin: 8px;
+  padding: 8px 10px;
+  border: 1px solid var(--garis);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.92);
+  font-size: 12px;
+}
+
+.legenda-baris {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  line-height: 1.7;
+}
+
+.popup-isi { min-width: 150px; }
+.popup-nama { display: block; font-weight: 600; }
+.popup-jenis { display: block; font-size: 12px; color: var(--tinta-lembut); }
+.popup-posisi { display: block; margin-top: 4px; font-size: 11px; color: var(--tinta-lembut); font-variant-numeric: tabular-nums; }
+
+/* ---------- Pemilih basemap ---------- */
+.basemap {
+  position: absolute;
+  z-index: 10;
+  top: 12px;
+  right: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.basemap-tombol {
+  padding: 7px 12px;
+  border: 1px solid var(--garis);
+  border-radius: 6px;
+  background: var(--putih);
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 1px 4px rgba(20, 33, 43, 0.2);
+}
+
+.basemap-tombol:hover { border-color: var(--teal); }
+
+.basemap-panel {
+  padding: 12px;
+  border: 1px solid var(--garis);
+  border-radius: 8px;
+  background: var(--putih);
+  box-shadow: 0 4px 16px rgba(20, 33, 43, 0.22);
+}
+
+.basemap-panel[hidden] { display: none; }
+
+.basemap-judul {
+  margin: 0 0 10px;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.basemap-daftar {
+  display: grid;
+  grid-template-columns: repeat(2, 96px);
+  gap: 10px;
+}
+
+.basemap-kartu {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 0;
+  border: 0;
+  background: none;
+  font-size: 12px;
+  text-align: center;
+  cursor: pointer;
+}
+
+.basemap-gambar {
+  display: block;
+  width: 96px;
+  height: 64px;
+  object-fit: cover;
+  border: 2px solid var(--garis);
+  border-radius: 6px;
+  background: #dde5e8;
+}
+
+.basemap-kartu:hover .basemap-gambar { border-color: var(--teal); }
+
+.basemap-kartu[aria-checked="true"] .basemap-gambar {
+  border-color: #4c8dff;
+  box-shadow: 0 0 0 2px rgba(76, 141, 255, 0.35);
+}
+
+.basemap-kartu[aria-checked="true"] .basemap-nama { font-weight: 600; }
+
+/* Gaya terang dan gelap dibuat dari tile OpenStreetMap lewat filter, jadi tanpa API key. */
+img.dasar-terang { filter: grayscale(1) brightness(1.12) contrast(0.88); }
+img.dasar-gelap { filter: invert(1) hue-rotate(180deg) grayscale(0.35) brightness(0.92) contrast(0.9); }
+
+.peta.dasar-terang .crootjs-map-tiles { filter: grayscale(1) brightness(1.12) contrast(0.88); }
+.peta.dasar-gelap .crootjs-map-tiles { filter: invert(1) hue-rotate(180deg) grayscale(0.35) brightness(0.92) contrast(0.9); }
+
+/* ---------- Layar kecil ---------- */
+@media (max-width: 820px) {
+  .tombol-menu { display: inline-block; }
+  .koordinat-judul { display: none; }
+  .alat { margin-left: 0; }
+
+  .panel {
+    position: absolute;
+    z-index: 5;
+    top: 0;
+    bottom: 0;
+    left: 0;
+    width: min(320px, 88vw);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    box-shadow: 4px 0 16px rgba(20, 33, 43, 0.18);
+  }
+
+  .panel.terbuka { transform: translateX(0); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .panel { transition: none; }
+}
+
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <button id="tombol-menu" class="tombol tombol-menu" type="button" aria-label="Buka daftar lokasi" aria-expanded="false">Daftar</button>
+    <div class="judul">
+      <h1>Peta Kampus ULBI</h1>
+      <p>Sarijadi, Bandung</p>
+    </div>
+
+    <div class="alat">
+      <button id="tombol-label" class="tombol" type="button" aria-pressed="true">Label</button>
+      <button id="tombol-pas" class="tombol" type="button">Pas ke kampus</button>
+    </div>
+
+    <div class="koordinat">
+      <span class="koordinat-judul">Titik terakhir diklik</span>
+      <output id="koordinat" class="koordinat-nilai">Klik peta untuk mengambil koordinat</output>
+      <button id="tombol-salin" class="tombol tombol-kecil" type="button" disabled>Salin</button>
+    </div>
+  </header>
+
+  <div class="isi">
+    <aside id="panel" class="panel" aria-label="Daftar lokasi">
+      <div class="panel-atas">
+        <input id="cari" class="cari" type="search" placeholder="Cari gedung, asrama, jalan" autocomplete="off" aria-label="Cari lokasi">
+        <div id="kelompok" class="kelompok" role="group" aria-label="Filter kategori"></div>
+      </div>
+      <ul id="daftar" class="daftar"></ul>
+      <p id="jumlah" class="jumlah"></p>
+    </aside>
+
+    <main class="area-peta">
+      <div id="peta" class="peta"></div>
+      <p id="galat" class="galat" hidden></p>
+
+      <div class="basemap">
+        <button id="tombol-basemap" class="basemap-tombol" type="button" aria-expanded="false" aria-controls="pilihan-basemap">Basemap</button>
+        <div id="pilihan-basemap" class="basemap-panel" hidden>
+          <h2 class="basemap-judul">Basemap</h2>
+          <div id="daftar-basemap" class="basemap-daftar" role="radiogroup" aria-label="Pilih basemap"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+  <script type="module">
+import {
+  createMap, addGeoJSON, fitMap,
+  setMapView, getMapView, showPopup,
+  onMapClick, onMapMove, addMapControl,
+} from "https://cdn.jsdelivr.net/gh/crootjs/lib@0.0.16/map.js";
+import { addMarker } from "https://cdn.jsdelivr.net/gh/crootjs/lib@0.0.16/mapmarker.js";
+import { addScaleBar } from "https://cdn.jsdelivr.net/gh/crootjs/lib@0.0.16/mapcontrol.js";
+
+const ID_PETA = "peta";
+const PUSAT_KAMPUS = [107.5762, -6.8731];
+const ZOOM_LABEL_MIN = 17;
+
+/* ---------- Data GeoJSON ULBI (tertanam) ---------- */
+const DATA_ULBI = {"type":"FeatureCollection","features":[{"type":"Feature","properties":{"name":"Area ULBI","kategori":"batas_kampus"},"geometry":{"type":"Polygon","coordinates":[[[107.576983,-6.87189],[107.576823,-6.872071],[107.576693,-6.87218],[107.576611,-6.872174],[107.576495,-6.872441],[107.576186,-6.872396],[107.576072,-6.872567],[107.575591,-6.872409],[107.575454,-6.872689],[107.575368,-6.873018],[107.575245,-6.87305],[107.574832,-6.874006],[107.575409,-6.874272],[107.57592,-6.874457],[107.576176,-6.874053],[107.576334,-6.874032],[107.576408,-6.873886],[107.576574,-6.873851],[107.57666,-6.873606],[107.576876,-6.873635],[107.577004,-6.87313],[107.577044,-6.873134],[107.577123,-6.872626],[107.577159,-6.87263],[107.577231,-6.872161],[107.577054,-6.872129],[107.577147,-6.872041],[107.577147,-6.872041],[107.576983,-6.87189]]]}},{"type":"Feature","properties":{"name":"Asrama Raflesia","kategori":"asrama"},"geometry":{"type":"Polygon","coordinates":[[[107.576842,-6.872116],[107.576781,-6.872556],[107.577152,-6.872619],[107.577188,-6.872373],[107.57722,-6.872171],[107.576842,-6.872116]]]}},{"type":"Feature","properties":{"name":"Lapangan Tenis","kategori":"olahraga"},"geometry":{"type":"Polygon","coordinates":[[[107.576731,-6.872637],[107.576713,-6.872779],[107.576713,-6.872779],[107.576675,-6.873066],[107.576851,-6.873091],[107.57704,-6.873115],[107.577079,-6.872826],[107.5771,-6.872697],[107.576731,-6.872637]]]}},{"type":"Feature","properties":{"name":"GOR ULBI","kategori":"olahraga"},"geometry":{"type":"Polygon","coordinates":[[[107.576576,-6.873114],[107.576539,-6.873404],[107.576836,-6.873448],[107.576882,-6.873153],[107.576576,-6.873114]]]}},{"type":"Feature","properties":{"name":"Gedung FLTB","kategori":"gedung_pendidikan"},"geometry":{"type":"Polygon","coordinates":[[[107.576204,-6.872438],[107.576145,-6.872885],[107.576518,-6.872934],[107.576518,-6.872934],[107.576581,-6.872493],[107.576204,-6.872438]]]}},{"type":"Feature","properties":{"name":"Gedung Rektorat","kategori":"gedung"},"geometry":{"type":"Polygon","coordinates":[[[107.57558,-6.873649],[107.575556,-6.873804],[107.575883,-6.873854],[107.575883,-6.873854],[107.575898,-6.873701],[107.57558,-6.873649]]]}},{"type":"Feature","properties":{"name":"Auditorium Bhakti POS","kategori":"gedung"},"geometry":{"type":"Polygon","coordinates":[[[107.576064,-6.873242],[107.576016,-6.8736],[107.576016,-6.8736],[107.576271,-6.873645],[107.576295,-6.873467],[107.576321,-6.873288],[107.576064,-6.873242]]]}},{"type":"Feature","properties":{"name":"Asrama Anggrek","kategori":"asrama"},"geometry":{"type":"Polygon","coordinates":[[[107.575577,-6.872515],[107.575519,-6.87294],[107.57569,-6.872961],[107.575885,-6.872989],[107.575943,-6.872558],[107.575943,-6.872558],[107.575577,-6.872515]]]}},{"type":"Feature","properties":{"name":"Asrama Gandaria","kategori":"asrama"},"geometry":{"type":"Polygon","coordinates":[[[107.575042,-6.87369],[107.575021,-6.8739],[107.575021,-6.8739],[107.575194,-6.873919],[107.575179,-6.874015],[107.575406,-6.874051],[107.575434,-6.873847],[107.575448,-6.873756],[107.575254,-6.873726],[107.575042,-6.87369]]]}},{"type":"Feature","properties":{"name":"Gedung Vokasi","kategori":"gedung_pendidikan"},"geometry":{"type":"Polygon","coordinates":[[[107.575318,-6.873115],[107.575269,-6.87351],[107.575825,-6.873611],[107.575883,-6.873206],[107.575318,-6.873115]]]}},{"type":"Feature","properties":{"name":"Kantor POS Sarijadi","kategori":"kantor"},"geometry":{"type":"Polygon","coordinates":[[[107.575875,-6.874168],[107.57586,-6.874271],[107.575983,-6.874293],[107.576006,-6.874187],[107.575875,-6.874168]]]}},{"type":"Feature","properties":{"name":"Gedung CDC","kategori":"gedung"},"geometry":{"type":"Polygon","coordinates":[[[107.576512,-6.873556],[107.576493,-6.873677],[107.576493,-6.873677],[107.576611,-6.873698],[107.576629,-6.873572],[107.576512,-6.873556]]]}},{"type":"Feature","properties":{"name":"Koperasi ULBI","kategori":"fasilitas"},"geometry":{"type":"Polygon","coordinates":[[[107.576572,-6.873452],[107.576567,-6.873509],[107.576567,-6.873509],[107.576703,-6.87353],[107.576711,-6.873473],[107.576572,-6.873452]]]}},{"type":"Feature","properties":{"name":"Kantin Orange","kategori":"fasilitas"},"geometry":{"type":"Polygon","coordinates":[[[107.576715,-6.873471],[107.5767,-6.873569],[107.5767,-6.87357],[107.57683,-6.873606],[107.576851,-6.873496],[107.576715,-6.873471]]]}},{"type":"Feature","properties":{"name":"Masjid Nurul Ilmi","kategori":"ibadah"},"geometry":{"type":"Polygon","coordinates":[[[107.575997,-6.872629],[107.575965,-6.872727],[107.575952,-6.872725],[107.575922,-6.872841],[107.575992,-6.87286],[107.576101,-6.872891],[107.576119,-6.872773],[107.576074,-6.872757],[107.576098,-6.872646],[107.576098,-6.872646],[107.575997,-6.872629]]]}},{"type":"Feature","properties":{"name":"Pendopo","kategori":"fasilitas"},"geometry":{"type":"Polygon","coordinates":[[[107.576109,-6.873113],[107.575999,-6.873106],[107.575995,-6.873152],[107.575988,-6.87321],[107.576095,-6.873225],[107.5761,-6.873181],[107.576109,-6.873113]]]}},{"type":"Feature","properties":{"name":"Dapur MBG","kategori":"fasilitas"},"geometry":{"type":"Polygon","coordinates":[[[107.576987,-6.871911],[107.576901,-6.872],[107.577026,-6.872135],[107.577073,-6.872085],[107.577123,-6.872032],[107.576987,-6.871911]]]}},{"type":"Feature","properties":{"name":"Jalan Utama","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.576889,-6.872054],[107.576818,-6.872135],[107.576786,-6.872193],[107.576767,-6.872352],[107.576735,-6.872549],[107.576657,-6.872655],[107.576585,-6.873007],[107.576508,-6.8731],[107.576406,-6.873675],[107.575831,-6.874055],[107.575728,-6.874346]]}},{"type":"Feature","properties":{"name":"Jalan Dapur MBG","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.576889,-6.872054],[107.57693,-6.87207],[107.57699,-6.87211]]}},{"type":"Feature","properties":{"name":"Jalan Lapangan Tenis","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.576657,-6.872655],[107.5767,-6.87262],[107.576725,-6.87263]]}},{"type":"Feature","properties":{"name":"Jalan FLTB","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.57659,-6.87242],[107.576598,-6.8727],[107.576585,-6.873007]]}},{"type":"Feature","properties":{"name":"Jalan Tengah","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.5753,-6.87305],[107.5756,-6.87305],[107.57595,-6.87305],[107.5763,-6.87303],[107.576585,-6.873007]]}},{"type":"Feature","properties":{"name":"Jalan Barat","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.5755,-6.8726],[107.5755,-6.87285],[107.5755,-6.87305]]}},{"type":"Feature","properties":{"name":"Jalan Rektorat","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.57515,-6.87357],[107.57545,-6.873605],[107.57592,-6.87368],[107.575985,-6.87376]]}},{"type":"Feature","properties":{"name":"Jalan Asrama Gandaria","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.5752,-6.87415],[107.57545,-6.8742],[107.575728,-6.874346]]}},{"type":"Feature","properties":{"name":"Jalan Kantor POS","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.575831,-6.874055],[107.57595,-6.87411],[107.57605,-6.8741],[107.576176,-6.874053]]}},{"type":"Feature","properties":{"name":"Jalan Auditorium","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.57639,-6.8731],[107.576385,-6.8734],[107.576406,-6.873675]]}},{"type":"Feature","properties":{"name":"Jalan Kantin","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.576406,-6.873675],[107.57645,-6.87376],[107.5766,-6.87374],[107.57672,-6.8737],[107.57684,-6.87366]]}},{"type":"Feature","properties":{"name":"Jalan GOR","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.57692,-6.87363],[107.57693,-6.8733],[107.57697,-6.87315]]}},{"type":"Feature","properties":{"name":"Jalan Setapak Masjid","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.576132,-6.87304],[107.576135,-6.87295],[107.576132,-6.8726],[107.57612,-6.87245]]}},{"type":"Feature","properties":{"name":"Jalan Vokasi","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.575255,-6.87308],[107.575245,-6.87335],[107.575245,-6.87357]]}},{"type":"Feature","properties":{"name":"Jalan Gerbang Selatan","kategori":"jalan"},"geometry":{"type":"LineString","coordinates":[[107.575728,-6.874346],[107.5758,-6.87442],[107.57592,-6.874457]]}}]};
+
+/* ---------- Konfigurasi tampilan ---------- */
+const KATEGORI = {
+  gedung_pendidikan: { nama: "Gedung pendidikan", warna: "#e8590c", kelompok: "gedung" },
+  gedung:            { nama: "Gedung",            warna: "#3b5bdb", kelompok: "gedung" },
+  asrama:            { nama: "Asrama",            warna: "#0f8b8d", kelompok: "asrama" },
+  olahraga:          { nama: "Olahraga",          warna: "#9c36b5", kelompok: "olahraga" },
+  fasilitas:         { nama: "Fasilitas",         warna: "#c08a00", kelompok: "layanan" },
+  kantor:            { nama: "Kantor",            warna: "#6b7780", kelompok: "layanan" },
+  ibadah:            { nama: "Tempat ibadah",     warna: "#2b8a3e", kelompok: "layanan" },
+  jalan:             { nama: "Jalan",             warna: "#d6336c", kelompok: "jalan" },
+  batas_kampus:      { nama: "Batas kampus",      warna: "#0f6b6f", kelompok: null },
+};
+
+const KELOMPOK = [
+  { kunci: "semua",    nama: "Semua" },
+  { kunci: "gedung",   nama: "Gedung" },
+  { kunci: "asrama",   nama: "Asrama" },
+  { kunci: "olahraga", nama: "Olahraga" },
+  { kunci: "layanan",  nama: "Layanan" },
+  { kunci: "jalan",    nama: "Jalan" },
+];
+
+// Semua basemap bebas API key. Terang dan gelap memakai tile OpenStreetMap + filter CSS
+// (lihat style.css); satelit memakai citra Esri World Imagery.
+const DASAR = {
+  standar: {
+    nama: "Standar",
+    kelas: "dasar-standar",
+    opsi: {},
+    contoh: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  },
+  terang: {
+    nama: "Terang",
+    kelas: "dasar-terang",
+    opsi: {},
+    contoh: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  },
+  gelap: {
+    nama: "Gelap",
+    kelas: "dasar-gelap",
+    opsi: {},
+    contoh: "https://tile.openstreetmap.org/{z}/{x}/{y}.png",
+  },
+  satelit: {
+    nama: "Satelit",
+    kelas: "dasar-satelit",
+    opsi: {
+      tiles: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+      attribution: "Tiles © Esri — Esri, Maxar, Earthstar Geographics, dan komunitas GIS",
+    },
+    contoh: "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
+  },
+};
+
+/* ---------- State ---------- */
+let data = null;          // FeatureCollection utuh dari ulbi.geojson
+let lokasi = [];          // fitur yang tampil di daftar (bangunan + jalan)
+let kelompokAktif = "semua";
+let kataCari = "";
+let idAktif = null;
+let posisiTerakhir = null;
+let petaDasar = "standar";
+
+/* ---------- Elemen halaman ---------- */
+const elPeta = document.getElementById(ID_PETA);
+const elDaftar = document.getElementById("daftar");
+const elJumlah = document.getElementById("jumlah");
+const elCari = document.getElementById("cari");
+const elKelompok = document.getElementById("kelompok");
+const elKoordinat = document.getElementById("koordinat");
+const elSalin = document.getElementById("tombol-salin");
+const elGalat = document.getElementById("galat");
+const elPanel = document.getElementById("panel");
+const elMenu = document.getElementById("tombol-menu");
+const elLabel = document.getElementById("tombol-label");
+const elTombolBasemap = document.getElementById("tombol-basemap");
+const elPanelBasemap = document.getElementById("pilihan-basemap");
+const elDaftarBasemap = document.getElementById("daftar-basemap");
+
+/* ---------- Helper data ---------- */
+function infoKategori(fitur) {
+  return KATEGORI[fitur.properties.kategori] || KATEGORI.fasilitas;
+}
+
+function semuaTitik(geometri) {
+  const hasil = [];
+  const telusuri = (koordinat) => {
+    if (typeof koordinat[0] === "number") hasil.push(koordinat);
+    else koordinat.forEach(telusuri);
+  };
+  telusuri(geometri.coordinates);
+  return hasil;
+}
+
+// Pusat poligon = rata-rata titik sudut; pusat garis = titik tengah panjang garis.
+function pusatFitur(fitur) {
+  const titik = semuaTitik(fitur.geometry);
+  if (fitur.geometry.type === "LineString") {
+    return titik[Math.floor(titik.length / 2)];
+  }
+  const jumlah = titik.reduce((total, t) => [total[0] + t[0], total[1] + t[1]], [0, 0]);
+  return [jumlah[0] / titik.length, jumlah[1] / titik.length];
+}
+
+function namaPendek(nama) {
+  return nama.replace(/^(Gedung|Asrama) /, "");
+}
+
+function koleksi(fitur) {
+  return { type: "FeatureCollection", features: fitur };
+}
+
+function formatPosisi(posisi) {
+  return posisi[1].toFixed(6) + ", " + posisi[0].toFixed(6);
+}
+
+/* ---------- Popup ---------- */
+function buatPopup(fitur, posisi) {
+  const kotak = document.createElement("div");
+  kotak.className = "popup-isi";
+
+  const nama = document.createElement("span");
+  nama.className = "popup-nama";
+  nama.textContent = fitur.properties.name;
+
+  const jenis = document.createElement("span");
+  jenis.className = "popup-jenis";
+  jenis.textContent = infoKategori(fitur).nama;
+
+  kotak.append(nama, jenis);
+
+  if (fitur.geometry.type !== "LineString" && posisi) {
+    const koordinat = document.createElement("span");
+    koordinat.className = "popup-posisi";
+    koordinat.textContent = formatPosisi(posisi);
+    kotak.append(koordinat);
+  }
+  return kotak;
+}
+
+/* ---------- Peta ---------- */
+function gayaFitur(fitur) {
+  const warna = infoKategori(fitur).warna;
+  switch (fitur.properties.kategori) {
+    case "batas_kampus":
+      return { stroke: warna, strokeWidth: 2.5, fill: warna, fillOpacity: 0.06 };
+    case "jalan":
+      return { stroke: warna, strokeWidth: 3.5, strokeOpacity: 0.95 };
+    default:
+      return { stroke: warna, strokeWidth: 2, fill: warna, fillOpacity: 0.55 };
+  }
+}
+
+function buatLegenda() {
+  const kotak = document.createElement("div");
+  kotak.className = "legenda";
+  Object.entries(KATEGORI).forEach(([kunci, info]) => {
+    if (kunci === "batas_kampus") return;
+    const baris = document.createElement("div");
+    baris.className = "legenda-baris";
+    const penanda = document.createElement("span");
+    penanda.className = (kunci === "jalan" ? "penanda penanda-jalan " : "penanda ") + "kat-" + kunci;
+    baris.append(penanda, document.createTextNode(info.nama));
+    kotak.append(baris);
+  });
+  return kotak;
+}
+
+function bangunPeta(tampilan) {
+  const opsi = {
+    center: tampilan ? tampilan.center : PUSAT_KAMPUS,
+    zoom: tampilan ? tampilan.zoom : 17,
+    minZoom: 15,
+    maxZoom: 19,
+    ...DASAR[petaDasar].opsi,
+  };
+  createMap(ID_PETA, opsi);
+  terapkanKelasDasar();
+
+  const batas = data.features.filter((f) => f.properties.kategori === "batas_kampus");
+  const bangunan = data.features.filter((f) => f.geometry.type === "Polygon" && f.properties.kategori !== "batas_kampus");
+  const jalan = data.features.filter((f) => f.geometry.type === "LineString");
+
+  // Urutan lapisan: batas di bawah, bangunan, lalu jalan paling atas.
+  const opsiGambar = {
+    style: gayaFitur,
+    popup: (fitur) => buatPopup(fitur, pusatFitur(fitur)),
+  };
+  addGeoJSON(ID_PETA, koleksi(batas), opsiGambar);
+  addGeoJSON(ID_PETA, koleksi(bangunan), opsiGambar);
+  addGeoJSON(ID_PETA, koleksi(jalan), opsiGambar);
+
+  // Label nama bangunan
+  bangunan.forEach((fitur) => {
+    const label = document.createElement("span");
+    label.className = "label-bangunan";
+    label.textContent = namaPendek(fitur.properties.name);
+    addMarker(ID_PETA, pusatFitur(fitur), { element: label, anchor: "center" });
+  });
+
+  addScaleBar(ID_PETA);
+  addMapControl(ID_PETA, buatLegenda(), "bottom-left");
+
+  // Label disembunyikan saat peta terlalu jauh supaya tidak bertumpuk.
+  onMapMove(ID_PETA, ({ zoom }) => {
+    elPeta.classList.toggle("label-sembunyi", zoom < ZOOM_LABEL_MIN);
+  });
+
+  onMapClick(ID_PETA, (posisi) => {
+    posisiTerakhir = posisi;
+    elKoordinat.textContent = formatPosisi(posisi);
+    elSalin.disabled = false;
+  });
+
+  if (!tampilan) fitMap(ID_PETA, data);
+}
+
+/* ---------- Pemilih basemap ---------- */
+function terapkanKelasDasar() {
+  Object.values(DASAR).forEach((d) => elPeta.classList.remove(d.kelas));
+  elPeta.classList.add(DASAR[petaDasar].kelas);
+}
+
+// Tile contoh (zoom 17 di tengah kampus) dipakai sebagai gambar pratinjau kartu.
+function urlContoh(kunci) {
+  const zoom = 17;
+  const n = 2 ** zoom;
+  const rad = (PUSAT_KAMPUS[1] * Math.PI) / 180;
+  const x = Math.floor(((PUSAT_KAMPUS[0] + 180) / 360) * n);
+  const y = Math.floor(((1 - Math.log(Math.tan(rad) + 1 / Math.cos(rad)) / Math.PI) / 2) * n);
+  return DASAR[kunci].contoh.replace("{z}", zoom).replace("{x}", x).replace("{y}", y);
+}
+
+function renderBasemap() {
+  const kartu = Object.entries(DASAR).map(([kunci, info]) => {
+    const tombol = document.createElement("button");
+    tombol.type = "button";
+    tombol.className = "basemap-kartu";
+    tombol.setAttribute("role", "radio");
+    tombol.setAttribute("aria-checked", String(kunci === petaDasar));
+
+    const gambar = document.createElement("img");
+    gambar.className = "basemap-gambar " + info.kelas;
+    gambar.src = urlContoh(kunci);
+    gambar.alt = "";
+    gambar.loading = "lazy";
+
+    const nama = document.createElement("span");
+    nama.className = "basemap-nama";
+    nama.textContent = info.nama;
+
+    tombol.append(gambar, nama);
+    tombol.addEventListener("click", () => {
+      if (kunci === petaDasar) return;
+      petaDasar = kunci;
+      bangunPeta(getMapView(ID_PETA));
+      renderBasemap();
+    });
+    return tombol;
+  });
+  elDaftarBasemap.replaceChildren(...kartu);
+}
+
+/* ---------- Daftar lokasi ---------- */
+function lokasiTersaring() {
+  return lokasi.filter((fitur) => {
+    const cocokKelompok = kelompokAktif === "semua" || infoKategori(fitur).kelompok === kelompokAktif;
+    const cocokCari = fitur.properties.name.toLowerCase().includes(kataCari);
+    return cocokKelompok && cocokCari;
+  });
+}
+
+function buatItem(fitur) {
+  const info = infoKategori(fitur);
+  const butir = document.createElement("li");
+
+  const tombol = document.createElement("button");
+  tombol.type = "button";
+  tombol.className = "item";
+  tombol.dataset.id = fitur.properties.name;
+  tombol.setAttribute("aria-current", String(idAktif === fitur.properties.name));
+
+  const penanda = document.createElement("span");
+  const jenisGaris = fitur.geometry.type === "LineString" ? "penanda penanda-jalan " : "penanda ";
+  penanda.className = jenisGaris + "kat-" + fitur.properties.kategori;
+
+  const teks = document.createElement("span");
+  const nama = document.createElement("span");
+  nama.className = "item-nama";
+  nama.textContent = fitur.properties.name;
+  const jenis = document.createElement("span");
+  jenis.className = "item-jenis";
+  jenis.textContent = " · " + info.nama;
+  teks.append(nama, jenis);
+
+  tombol.append(penanda, teks);
+  tombol.addEventListener("click", () => fokusKe(fitur));
+  butir.append(tombol);
+  return butir;
+}
+
+function renderDaftar() {
+  const tampil = lokasiTersaring();
+  elDaftar.replaceChildren(...tampil.map(buatItem));
+  elJumlah.textContent = tampil.length === 0
+    ? "Tidak ada lokasi yang cocok. Ubah kata kunci atau kategori."
+    : tampil.length + " lokasi ditampilkan";
+}
+
+function renderKelompok() {
+  const tombol = KELOMPOK.map((k) => {
+    const el = document.createElement("button");
+    el.type = "button";
+    el.textContent = k.nama;
+    el.setAttribute("aria-pressed", String(k.kunci === kelompokAktif));
+    el.addEventListener("click", () => {
+      kelompokAktif = k.kunci;
+      renderKelompok();
+      renderDaftar();
+    });
+    return el;
+  });
+  elKelompok.replaceChildren(...tombol);
+}
+
+function fokusKe(fitur) {
+  const pusat = pusatFitur(fitur);
+  idAktif = fitur.properties.name;
+  setMapView(ID_PETA, pusat, 19);
+  showPopup(ID_PETA, pusat, buatPopup(fitur, pusat));
+  renderDaftar();
+  elPanel.classList.remove("terbuka");
+  elMenu.setAttribute("aria-expanded", "false");
+}
+
+/* ---------- Kontrol halaman ---------- */
+function pasangKontrol() {
+  elCari.addEventListener("input", () => {
+    kataCari = elCari.value.trim().toLowerCase();
+    renderDaftar();
+  });
+
+  document.getElementById("tombol-pas").addEventListener("click", () => {
+    idAktif = null;
+    fitMap(ID_PETA, data);
+    renderDaftar();
+  });
+
+  elLabel.addEventListener("click", () => {
+    const tampil = elLabel.getAttribute("aria-pressed") !== "true";
+    elLabel.setAttribute("aria-pressed", String(tampil));
+    elPeta.classList.toggle("tanpa-label", !tampil);
+  });
+
+
+  elTombolBasemap.addEventListener("click", () => {
+    const terbuka = elPanelBasemap.hidden;
+    elPanelBasemap.hidden = !terbuka;
+    elTombolBasemap.setAttribute("aria-expanded", String(terbuka));
+  });
+
+  elMenu.addEventListener("click", () => {
+    const terbuka = elPanel.classList.toggle("terbuka");
+    elMenu.setAttribute("aria-expanded", String(terbuka));
+  });
+
+  elSalin.addEventListener("click", async () => {
+    if (!posisiTerakhir) return;
+    const teksAsli = elSalin.textContent;
+    try {
+      await navigator.clipboard.writeText(formatPosisi(posisiTerakhir));
+      elSalin.textContent = "Tersalin";
+    } catch (galat) {
+      elSalin.textContent = "Gagal";
+    }
+    setTimeout(() => { elSalin.textContent = teksAsli; }, 1500);
+  });
+}
+
+/* ---------- Mulai ---------- */
+pasangKontrol();
+renderKelompok();
+renderBasemap();
+
+data = DATA_ULBI;
+lokasi = data.features.filter((f) => f.properties.kategori !== "batas_kampus");
+bangunPeta(null);
+renderDaftar();
+
+  </script>
+</body>
+</html>
